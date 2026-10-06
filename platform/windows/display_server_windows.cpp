@@ -6692,11 +6692,18 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			// event was triggered. This is needed for drag & drop to work between windows,
 			// because the engine expects events to keep being processed
 			// on the same window dragging started.
-			if (mb->is_pressed()) {
-				last_mouse_button_down_window = window_id;
-			} else if (last_mouse_button_down_window != DisplayServerEnums::INVALID_WINDOW_ID) {
-				mb->set_window_id(last_mouse_button_down_window);
-				last_mouse_button_down_window = DisplayServerEnums::INVALID_WINDOW_ID;
+			// Mouse wheel "presses" are synthetic and always immediately released above,
+			// so they must not be allowed to clobber this tracking: wheel messages bypass
+			// SetCapture and are delivered to whatever window is under the cursor, so
+			// scrolling over a different window mid-drag would otherwise redirect the real
+			// button-up to that window instead of the one the drag started on.
+			if (mb->get_button_index() < MouseButton::WHEEL_UP || mb->get_button_index() > MouseButton::WHEEL_RIGHT) {
+				if (mb->is_pressed()) {
+					last_mouse_button_down_window = window_id;
+				} else if (last_mouse_button_down_window != DisplayServerEnums::INVALID_WINDOW_ID) {
+					mb->set_window_id(last_mouse_button_down_window);
+					last_mouse_button_down_window = DisplayServerEnums::INVALID_WINDOW_ID;
+				}
 			}
 		} break;
 
